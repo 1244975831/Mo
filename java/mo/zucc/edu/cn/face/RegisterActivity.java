@@ -277,7 +277,7 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 								public void onClick(DialogInterface dialog, int which) {
 									((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(mEditText.getText().toString(), mAFR_FSDKFace,1);
                                     dbManager= new DBManager(getBaseContext());
-                                    dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),mBitmap);
+                                    dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),face);
 									mRegisterViewAdapter.notifyDataSetChanged();
 									dialog.dismiss();
 								}
