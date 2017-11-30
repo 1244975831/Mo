@@ -51,19 +51,24 @@ public class DBManager {
         }
     }
 
-    public void addFace(String facename , byte[] faceinfo ,Bitmap facepic) {
+    public void addFace(String facename , byte[] faceinfo ,Bitmap facepic ,Bitmap oldfacepic ) {
         ContentValues values = new ContentValues();
+        //存人脸
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         facepic.compress(Bitmap.CompressFormat.PNG, 100, baos);
         byte[] faceimg = baos.toByteArray();
+        //存原照
+        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+        oldfacepic.compress(Bitmap.CompressFormat.PNG, 100, ba);
+        byte[] oldfaceimg = ba.toByteArray();
         //写入User表
         try {
             values.put("facename", facename);
             values.put("faceinfo", faceinfo);
             values.put("facepic", faceimg);
+            values.put("oldfacepic", oldfaceimg);
             db.insert("User", null, values);
             values.clear();
-
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -75,25 +80,48 @@ public class DBManager {
         SQLiteDatabase dp=helper.getWritableDatabase();
         FaceInfo result = new FaceInfo();
         Cursor cursor = dp.query("User",null,null,null,null,null,null);
-        if(cursor.moveToFirst()){
-            do{
-                FaceInfo datas = new FaceInfo();
-                int id = cursor.getInt(cursor.getColumnIndex("_id"));
-                String facename = cursor.getString(cursor.getColumnIndex("facename"));
-                byte[] facepic = cursor.getBlob(cursor.getColumnIndex("facepic"));
-                byte[] faceinfo = cursor.getBlob(cursor.getColumnIndex("faceinfo"));
-                if(facename.equals(name)){
-                    datas.setNo(id);
-                    datas.setFacename(facename);
-                    datas.setFacepic(facepic);
-                    datas.setFaceinfo(faceinfo);
-                    result = datas;
-                    data.add(datas);
-                }
-            }while (cursor.moveToNext());
+        while (cursor.moveToNext()){
+            FaceInfo datas = new FaceInfo();
+            int id = cursor.getInt(cursor.getColumnIndex("_id"));
+            String facename = cursor.getString(cursor.getColumnIndex("facename"));
+            byte[] facepic = cursor.getBlob(cursor.getColumnIndex("facepic"));
+            byte[] faceinfo = cursor.getBlob(cursor.getColumnIndex("faceinfo"));
+            byte[] oldfacepic = cursor.getBlob(cursor.getColumnIndex("oldfacepic"));
+            if(facename.equals(name)){
+                datas.setNo(id);
+                datas.setFacename(facename);
+                datas.setFacepic(facepic);
+                datas.setFaceinfo(faceinfo);
+                datas.setOldfacepic(oldfacepic);
+                result = datas;
+                data.add(datas);
+            }
         }
+
         cursor.close();
 
         return result;
+    }
+
+    public  ArrayList<FaceInfo> selectAllFaces() {
+        ArrayList<FaceInfo> data = new ArrayList<>();
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        Cursor cursor = dp.query("User",null,null,null,null,null,null);
+        while (cursor.moveToNext()){
+            FaceInfo datas = new FaceInfo();
+            int id = cursor.getInt(cursor.getColumnIndex("_id"));
+            String facename = cursor.getString(cursor.getColumnIndex("facename"));
+            byte[] facepic = cursor.getBlob(cursor.getColumnIndex("facepic"));
+            byte[] faceinfo = cursor.getBlob(cursor.getColumnIndex("faceinfo"));
+            byte[] oldfacepic = cursor.getBlob(cursor.getColumnIndex("oldfacepic"));
+            datas.setNo(id);
+            datas.setFacename(facename);
+            datas.setFacepic(facepic);
+            datas.setFaceinfo(faceinfo);
+            datas.setOldfacepic(oldfacepic);
+            data.add(datas);
+        }
+        cursor.close();
+        return data;
     }
 }

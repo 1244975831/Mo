@@ -59,11 +59,13 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 	private final static int MSG_EVENT_FR_ERROR = 0x1005;
 	private UIHandler mUIHandler;
 	// Intent data.
-	private String 		mFilePath;
+	private String 	mFilePath;
     private DBManager dbManager;
 	private SurfaceView mSurfaceView;
 	private SurfaceHolder mSurfaceHolder;
 	private Bitmap mBitmap;
+	private Bitmap oldmap;
+	byte[] getimage;
 	private Rect src = new Rect();
 	private Rect dst = new Rect();
 	private Thread view;
@@ -182,17 +184,24 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 					error1 = engine1.AFR_FSDK_ExtractFRFeature(data, mBitmap.getWidth(), mBitmap.getHeight(), AFR_FSDKEngine.CP_PAF_NV21, new Rect(result.get(0).getRect()), result.get(0).getDegree(), result1);
 					Log.d("com.arcsoft", "Face=" + result1.getFeatureData()[0] + "," + result1.getFeatureData()[1] + "," + result1.getFeatureData()[2] + "," + error1.getCode());
 					if(error1.getCode() == error1.MOK) {
-						mAFR_FSDKFace = result1.clone();
-						int width = result.get(0).getRect().width();
-						int height = result.get(0).getRect().height();
-						Bitmap face_bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-						Canvas face_canvas = new Canvas(face_bitmap);
-						face_canvas.drawBitmap(mBitmap, result.get(0).getRect(), new Rect(0, 0, width, height), null);
-						Message reg = Message.obtain();
-						reg.what = MSG_CODE;
-						reg.arg1 = MSG_EVENT_REG;
-						reg.obj = face_bitmap;
-						mUIHandler.sendMessage(reg);
+						int i = 0;
+						//多张人脸注册
+						while(i<result.size()){
+							mAFR_FSDKFace = result1.clone();
+							int width = result.get(0).getRect().width();
+							int height = result.get(0).getRect().height();
+							Bitmap face_bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+							Canvas face_canvas = new Canvas(face_bitmap);
+							face_canvas.drawBitmap(mBitmap, result.get(i).getRect(), new Rect(0, 0, width, height), null);
+							Message reg = Message.obtain();
+							reg.what = MSG_CODE;
+							reg.arg1 = MSG_EVENT_REG;
+							reg.obj = face_bitmap;
+							mUIHandler.sendMessage(reg);
+							i++;
+						}
+
+
 					} else {
 						Message reg = Message.obtain();
 						reg.what = MSG_CODE;
@@ -224,6 +233,8 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 	private boolean getIntentData(Bundle bundle) {
 		try {
 			mFilePath = bundle.getString("imagePath");
+			getimage = bundle.getByteArray("oldimage");
+			oldmap =  BitmapFactory.decodeByteArray(getimage, 0, getimage.length);
 			if (mFilePath == null || mFilePath.isEmpty()) {
 				return false;
 			}
@@ -277,7 +288,8 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 								public void onClick(DialogInterface dialog, int which) {
 									((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(mEditText.getText().toString(), mAFR_FSDKFace,1);
                                     dbManager= new DBManager(getBaseContext());
-                                    dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),face);
+                                    dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),face,oldmap);
+//									dbManager.selectFaces("m");
 									mRegisterViewAdapter.notifyDataSetChanged();
 									dialog.dismiss();
 								}
