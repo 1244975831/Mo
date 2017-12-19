@@ -288,8 +288,12 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 								public void onClick(DialogInterface dialog, int which) {
 									((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(mEditText.getText().toString(), mAFR_FSDKFace,1);
                                     dbManager= new DBManager(getBaseContext());
+<<<<<<< HEAD
                                     dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),face,oldmap);
 //									dbManager.selectFaces("m");
+=======
+                                    dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),mBitmap);
+>>>>>>> parent of 9ea1e26... 修复了储存的人脸是原图片的bug
 									mRegisterViewAdapter.notifyDataSetChanged();
 									dialog.dismiss();
 								}

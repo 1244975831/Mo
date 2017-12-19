@@ -94,7 +94,6 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 				String name = null;
 				for (FaceDB.FaceRegist fr : mResgist) {
 					for (AFR_FSDKFace face : fr.mFaceList) {
-						//人脸匹配 face为人脸库数据
 						error = engine.AFR_FSDK_FacePairMatching(result, face, score);
 						Log.d(TAG,  "Score:" + score.getScore() + ", AFR_FSDK_FacePairMatching=" + error.getCode());
 						if (max < score.getScore()) {
