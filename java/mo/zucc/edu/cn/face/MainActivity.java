@@ -20,8 +20,6 @@ import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
-
 import mo.zucc.edu.cn.face.DB.DBManager;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
@@ -34,10 +32,9 @@ public class MainActivity extends Activity implements OnClickListener {
 	private static final int REQUEST_CODE_IMAGE_CAMERA = 1;
 	private static final int REQUEST_CODE_IMAGE_OP = 2;
 	private static final int REQUEST_CODE_OP = 3;
-	private static final int REQUEST_CODE_IMAGE_Detecter = 4;
+
 	private Uri mPath;
 	private DBManager dbManager ;
-	ImageView face;
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onCreate(android.os.Bundle)
 	 */
@@ -47,10 +44,10 @@ public class MainActivity extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		this.setContentView(R.layout.main_test);
 		dbManager = new DBManager(getBaseContext());
-		face = (ImageView)findViewById(R.id.face);
-		FaceInfo faceInfo = dbManager.selectFaces("识别图像");
-//		Bitmap bitmap = BitmapFactory.decodeByteArray(faceInfo.getFacepic(), 0, faceInfo.getFacepic().length);
-//		face.setImageBitmap(bitmap);
+		ImageView face = (ImageView)findViewById(R.id.face);
+		FaceInfo faceInfo = dbManager.selectFaces("aaa");
+		Bitmap bitmap = BitmapFactory.decodeByteArray(faceInfo.getFacepic(), 0, faceInfo.getFacepic().length);
+		face.setImageBitmap(bitmap);
 		//注册人脸
 		View v = this.findViewById(R.id.button1);
 		v.setOnClickListener(this);
@@ -72,7 +69,7 @@ public class MainActivity extends Activity implements OnClickListener {
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 
-		if (requestCode == REQUEST_CODE_IMAGE_OP ||requestCode == REQUEST_CODE_IMAGE_Detecter && resultCode == RESULT_OK ) {
+		if (requestCode == REQUEST_CODE_IMAGE_OP && resultCode == RESULT_OK) {
 			mPath = data.getData();
 			String file = getPath(mPath);
 			Bitmap bmp = Application.decodeImage(file);
@@ -84,13 +81,7 @@ public class MainActivity extends Activity implements OnClickListener {
 				} else {
 					Log.i(TAG, "bmp [" + bmp.getWidth() + "," + bmp.getHeight());
 				}
-				if(requestCode == REQUEST_CODE_IMAGE_Detecter){
-					startImageDetector(bmp, file);
-				}
-				else{
-					startRegister(bmp, file);
-				}
-
+				startRegister(bmp, file);
 			}
 		} else if (requestCode == REQUEST_CODE_OP) {
 			Log.i(TAG, "RESULT =" + resultCode);
@@ -118,21 +109,10 @@ public class MainActivity extends Activity implements OnClickListener {
 					new AlertDialog.Builder(this)
 							.setTitle("请选择相机")
 							.setIcon(android.R.drawable.ic_dialog_info)
-							.setItems(new String[]{"后置相机", "前置相机","打开图片"}, new DialogInterface.OnClickListener() {
+							.setItems(new String[]{"后置相机", "前置相机"}, new DialogInterface.OnClickListener() {
 										@Override
 										public void onClick(DialogInterface dialog, int which) {
-											switch (which) {
-												case 2:
-													Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
-													getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
-													getImageByalbum.setType("image/jpeg");
-													startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_Detecter);
-
-													break;
-												default:
-													startDetector(which);
-											}
-
+											startDetector(which);
 										}
 									})
 							.show();
@@ -251,29 +231,14 @@ public class MainActivity extends Activity implements OnClickListener {
 	/**
 	 * @param mBitmap
 	 */
-	//注册方法
 	private void startRegister(Bitmap mBitmap, String file) {
 		Intent it = new Intent(MainActivity.this, RegisterActivity.class);
 		Bundle bundle = new Bundle();
 		bundle.putString("imagePath", file);
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-		byte[] oldimage = baos.toByteArray();
-		bundle.putByteArray("oldimage",oldimage);
-		it.putExtras(bundle);
-		startActivityForResult(it, REQUEST_CODE_OP);
-
-//		face.setImageBitmap(mBitmap);
-
-	}
-	private void startImageDetector(Bitmap mBitmap, String file) {
-		Intent it = new Intent(MainActivity.this, ImageDetecterActivity.class);
-		Bundle bundle = new Bundle();
-		bundle.putString("imagePath", file);
 		it.putExtras(bundle);
 		startActivityForResult(it, REQUEST_CODE_OP);
 	}
-	//摄像头识别
+
 	private void startDetector(int camera) {
 		Intent it = new Intent(MainActivity.this, DetecterActivity.class);
 		it.putExtra("Camera", camera);
