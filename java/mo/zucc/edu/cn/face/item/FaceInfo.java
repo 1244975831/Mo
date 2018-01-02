@@ -9,6 +9,15 @@ public class FaceInfo {
     public String facename;
     public byte[] facepic;
     public byte[] faceinfo;
+    public byte[] oldfacepic;
+
+    public byte[] getOldfacepic() {
+        return oldfacepic;
+    }
+
+    public void setOldfacepic(byte[] oldfacepic) {
+        this.oldfacepic = oldfacepic;
+    }
 
     public int getNo() {
         return no;
