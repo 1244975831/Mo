@@ -6,6 +6,7 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -48,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.pedant.SweetAlert.SweetAlertDialog;
 import mo.zucc.edu.cn.face.Animation.CustomView;
 import mo.zucc.edu.cn.face.DB.DBManager;
 import mo.zucc.edu.cn.face.Fragmnet.CompareFragment;
@@ -60,6 +62,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
     private final static int MSG_EVENT_NO_FEATURE = 0x1003;
     private final static int MSG_EVENT_FD_ERROR = 0x1004;
     private final static int MSG_EVENT_FR_ERROR = 0x1005;
+    private final static int MSG_Image_NO_Match = 0x1006;
     private UIHandler mUIHandler;
     private String mFilePath;
     private final String TAG = this.getClass().toString();
@@ -74,6 +77,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
     FRAbsLoop mFRAbsLoop = null;
     Handler mHandler;
     byte[] mImageNV21 = null;
+    private boolean Find = false;
     private int mWidth, mHeight, mFormat;
     private CustomView customView;
     AFT_FSDKFace mAFT_FSDKFace = null;
@@ -249,6 +253,38 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                     Toast.makeText(ImageDetecterActivity.this, "FR初始化失败，错误码：" + msg.arg2, Toast.LENGTH_SHORT).show();
                 }
             }
+            if (msg.arg1 == MSG_Image_NO_Match) {
+                if(Find == false){
+                    new SweetAlertDialog(ImageDetecterActivity.this, SweetAlertDialog.ERROR_TYPE)
+                            .setConfirmText("确定")
+                            .setCancelText("取消")
+                            .setTitleText("没有找到匹配的人脸")
+                            .setContentText("点击确定注册该人脸，取消返回主页")
+                            .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                @Override
+                                public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                    Intent it = new Intent(ImageDetecterActivity.this, RegisterActivity.class);
+                                    Bundle bundle = new Bundle();
+                                    bundle.putString("imagePath", mFilePath);
+                                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                    mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+                                    byte[] oldimage = baos.toByteArray();
+                                    bundle.putByteArray("oldimage",null);
+                                    it.putExtras(bundle);
+                                    startActivityForResult(it, 3);
+                                }
+                            })
+                            .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener(){
+                                @Override
+                                public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                    Intent intent = new Intent(ImageDetecterActivity.this,MainActivity.class);
+                                    startActivity(intent);
+                                    finish();
+                                }
+                            })
+                            .show();
+                }
+            }
         }
     }
 
@@ -311,6 +347,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                 }
                 //crop
                 if(max>0.6){
+                    Find = true;
                     CompareFragment compareFragment = new CompareFragment();
 
                     Bundle bundle = new Bundle();
@@ -329,6 +366,12 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentTransaction.replace(R.id.compare,compareFragment);
                     fragmentTransaction.commit();
+
+                }else{
+                    Message reg = Message.obtain();
+                    reg.arg1 = MSG_Image_NO_Match;
+                    mUIHandler.sendMessage(reg);
+                    Find = false;
                 }
 
                 mImageNV21 = null;

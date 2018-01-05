@@ -22,6 +22,7 @@ import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 
+import cn.pedant.SweetAlert.SweetAlertDialog;
 import mo.zucc.edu.cn.face.DB.DBManager;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
@@ -117,58 +118,75 @@ public class MainActivity extends Activity implements OnClickListener {
 				if( ((Application)getApplicationContext()).mFaceDB.mRegister.isEmpty() ) {
 					Toast.makeText(this, "没有注册人脸，请先注册！", Toast.LENGTH_SHORT).show();
 				} else {
-					new AlertDialog.Builder(this)
-							.setTitle("请选择相机")
-							.setIcon(android.R.drawable.ic_dialog_info)
-							.setItems(new String[]{"后置相机", "前置相机","打开图片"}, new DialogInterface.OnClickListener() {
-										@Override
-										public void onClick(DialogInterface dialog, int which) {
-											switch (which) {
-												case 2:
-													Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
-													getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
-													getImageByalbum.setType("image/jpeg");
-													startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_Detecter);
-
-													break;
-												default:
-													startDetector(which);
-											}
-
-										}
-									})
+					//用sweetAlert 制作感觉较好的选择弹出框
+					new SweetAlertDialog(this)
+							.setTitleText("请选择检测方式")
+							.setOpenImageListener(new SweetAlertDialog.OnSweetClickListener(){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
+									getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
+									getImageByalbum.setType("image/jpeg");
+									startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_Detecter);
+								}
+							})
+							.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									startDetector(0);
+								}
+							})
+							.setOpenFrontCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									startDetector(1);
+								}
+							})
+							.setCancelText("取消")
+							.isfront(true)
+                            .setLiebiao(true)
+							.setEdname(false)
+							.showCancelButton(true)
 							.show();
+					break;
 				}
 				break;
 			case R.id.button1:
-				new AlertDialog.Builder(this)
-						.setTitle("请选择注册方式")
-						.setIcon(android.R.drawable.ic_dialog_info)
-						.setItems(new String[]{"打开图片", "拍摄照片"}, new DialogInterface.OnClickListener() {
+				new SweetAlertDialog(this)
+						.setTitleText("请选择注册方式")
+						.setOpenImageListener(new SweetAlertDialog.OnSweetClickListener(){
 							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								switch (which){
-									case 1:
-										Intent getImageByCamera = new Intent(
-												"android.media.action.IMAGE_CAPTURE");
-										ContentValues values = new ContentValues(1);
-
-										values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-										mPath = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-										getImageByCamera.putExtra(MediaStore.EXTRA_OUTPUT, mPath);
-
-										startActivityForResult(getImageByCamera, REQUEST_CODE_IMAGE_CAMERA);
-										break;
-									case 0:
-										Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
-										getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
-										getImageByalbum.setType("image/jpeg");
-										startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
-										break;
-									default:;
-								}
+							public void onClick(SweetAlertDialog sweetAlertDialog) {
+								Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
+								getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
+								getImageByalbum.setType("image/jpeg");
+								startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
 							}
 						})
+						.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+							@Override
+							public void onClick(SweetAlertDialog sweetAlertDialog) {
+								Intent getImageByCamera = new Intent(
+										"android.media.action.IMAGE_CAPTURE");
+								ContentValues values = new ContentValues(1);
+
+								values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+								mPath = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+								getImageByCamera.putExtra(MediaStore.EXTRA_OUTPUT, mPath);
+
+								startActivityForResult(getImageByCamera, REQUEST_CODE_IMAGE_CAMERA);
+							}
+						})
+						.setOpenFrontCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+							@Override
+							public void onClick(SweetAlertDialog sweetAlertDialog) {
+								startDetector(1);
+							}
+						})
+						.setCancelText("取消")
+                        .setLiebiao(true)
+						.setEdname(false)
+						.isfront(false)
 						.show();
 				break;
 			default:;

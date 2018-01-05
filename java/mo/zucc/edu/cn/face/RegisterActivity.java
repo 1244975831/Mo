@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -45,6 +46,7 @@ import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.pedant.SweetAlert.SweetAlertDialog;
 import mo.zucc.edu.cn.face.Animation.CustomView;
 import mo.zucc.edu.cn.face.DB.DBManager;
 
@@ -171,12 +173,8 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 							mPaint.setStrokeWidth(10.0f);
 							mPaint.setStyle(Paint.Style.STROKE);
 //							canvas.drawRect(face.getRect(), mPaint);
-
-
 							customView.Customgetdata(face.getRect(),src,dst,scale);
 							new Thread(customView).start();
-//							mPaint.setColor(Color.YELLOW);
-//							canvas.drawCircle(face.getRect().left+face.getRect().width()/2,face.getRect().top+face.getRect().height()/2,face.getRect().width()/2,mPaint);
 						}
 						canvas.restore();
 						mSurfaceHolder.unlockCanvasAndPost(canvas);
@@ -290,34 +288,55 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 			super.handleMessage(msg);
 			if (msg.what == MSG_CODE) {
 				if (msg.arg1 == MSG_EVENT_REG) {
-					LayoutInflater inflater = LayoutInflater.from(RegisterActivity.this);
-					View layout = inflater.inflate(R.layout.dialog_register, null);
-					mEditText = (EditText) layout.findViewById(R.id.editview);
-					mEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(16)});
-					mExtImageView = (ExtImageView) layout.findViewById(R.id.extimageview);
-					mExtImageView.setImageBitmap((Bitmap) msg.obj);
 					final Bitmap face = (Bitmap) msg.obj;
-					new AlertDialog.Builder(RegisterActivity.this)
-							.setTitle("请输入注册名字")
-							.setIcon(android.R.drawable.ic_dialog_info)
-							.setView(layout)
-							.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+					new SweetAlertDialog(RegisterActivity.this, SweetAlertDialog.CUSTOM_IMAGE_TYPE)
+							.setTitleText("请输入注册名!")
+							.setCustomImage((Bitmap) msg.obj)
+							.setConfirmText("确定")
+							.setCancelText("取消")
+							.setEdname(true)
+							.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener(){
 								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(mEditText.getText().toString(), mAFR_FSDKFace,1);
-									dbManager= new DBManager(getBaseContext());
-									dbManager.addFace(mEditText.getText().toString(),mAFR_FSDKFace.getFeatureData(),face,null);
-									mRegisterViewAdapter.notifyDataSetChanged();
-									dialog.dismiss();
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									String edname = sweetAlertDialog.getEdtext();
+									if(edname.equals(null) || edname.equals("")){
+										Toast.makeText(RegisterActivity.this, "名字不能为空！", Toast.LENGTH_SHORT).show();
+									}else{
+										((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(edname, mAFR_FSDKFace,1);
+										dbManager= new DBManager(getBaseContext());
+										dbManager.addFace(edname,mAFR_FSDKFace.getFeatureData(),face,null);
+										mRegisterViewAdapter.notifyDataSetChanged();
+										sweetAlertDialog.setTitleText("注册成功!")
+												.setContentText("您上传的图片已经成功保存至识别库内!")
+												.setConfirmText("确定")
+												.showCancelButton(false)
+												.setCancelClickListener(null)
+												.setConfirmClickListener(null)
+												.setEdname(false)
+												.changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+									}
 								}
 							})
-							.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+							.setCancelClickListener(new SweetAlertDialog.OnSweetClickListener(){
 								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									dialog.dismiss();
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									sweetAlertDialog.setTitleText("取消注册!")
+											.setContentText("您的注册操作已取消")
+											.setConfirmText("确定")
+											.showCancelButton(false)
+											.setCancelClickListener(null)
+											.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener(){
+												@Override
+												public void onClick(SweetAlertDialog sweetAlertDialog) {
+													finish();
+												}
+											})
+											.setEdname(false)
+											.changeAlertType(SweetAlertDialog.ERROR_TYPE);
 								}
 							})
 							.show();
+
 				} else if(msg.arg1 == MSG_EVENT_NO_FEATURE ){
 					Toast.makeText(RegisterActivity.this, "人脸特征无法检测，请换一张图片", Toast.LENGTH_SHORT).show();
 				} else if(msg.arg1 == MSG_EVENT_NO_FACE ){
