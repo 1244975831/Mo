@@ -7,6 +7,7 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -15,8 +16,12 @@ import android.graphics.ImageFormat;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -55,6 +60,8 @@ import mo.zucc.edu.cn.face.DB.DBManager;
 import mo.zucc.edu.cn.face.Fragmnet.CompareFragment;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
+import static mo.zucc.edu.cn.face.MainActivity.getDataColumn;
+
 public class ImageDetecterActivity extends Activity implements SurfaceHolder.Callback {
     private final static int MSG_CODE = 0x1000;
     private final static int MSG_EVENT_REG = 0x1001;
@@ -63,6 +70,12 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
     private final static int MSG_EVENT_FD_ERROR = 0x1004;
     private final static int MSG_EVENT_FR_ERROR = 0x1005;
     private final static int MSG_Image_NO_Match = 0x1006;
+    private final static int MSG_Image_Match = 0x1007;
+    private static final int REQUEST_CODE_IMAGE_CAMERA = 1;
+    private static final int REQUEST_CODE_IMAGE_OP = 2;
+    private static final int REQUEST_CODE_OP = 3;
+    private static final int REQUEST_CODE_IMAGE_Detecter = 4;
+    private Uri mPath;
     private UIHandler mUIHandler;
     private String mFilePath;
     private final String TAG = this.getClass().toString();
@@ -159,7 +172,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                             mPaint.setStrokeWidth(10.0f);
                             mPaint.setStyle(Paint.Style.STROKE);
 //                            canvas.drawRect(face.getRect(), mPaint);
-                            customView.Customgetdata(face.getRect(),src,dst,scale);
+                            customView.Customgetdata(face.getRect(),src,dst,scale,mBitmap.getWidth());
                             new Thread(customView).start();
                         }
                         canvas.restore();
@@ -236,18 +249,41 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                         final Bitmap face = (Bitmap) msg.obj;
 //                        dbManager= new DBManager(getBaseContext());
 //                        dbManager.addFace("识别图像",mAFR_FSDKFace.getFeatureData(),face);
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        face.compress(Bitmap.CompressFormat.PNG, 100, baos);
+//                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//                        face.compress(Bitmap.CompressFormat.PNG, 100, baos);
 
-                        mImageNV21 = baos.toByteArray();
+//                        mImageNV21 = baos.toByteArray();
                         mFRAbsLoop = new FRAbsLoop();
                         mFRAbsLoop.start();
                     }
                 }else if(msg.arg1 == MSG_EVENT_NO_FEATURE ){
                     Toast.makeText(ImageDetecterActivity.this, "人脸特征无法检测，请换一张图片", Toast.LENGTH_SHORT).show();
                 } else if(msg.arg1 == MSG_EVENT_NO_FACE ){
-                    Toast.makeText(ImageDetecterActivity.this, "没有检测到人脸，请换一张图片", Toast.LENGTH_SHORT).show();
-                } else if(msg.arg1 == MSG_EVENT_FD_ERROR ){
+                    new SweetAlertDialog(ImageDetecterActivity.this, SweetAlertDialog.ERROR_TYPE)
+                            .setTitleText("错误")
+                            .setContentText("没有检测到人脸，请换一张图片")
+                            .setCancelText("返回")
+                            .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                @Override
+                                public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                    finish();
+                                }
+                            })
+                            .setConfirmMissText("重新选择")
+                            .setConfirmMissListener(new SweetAlertDialog.OnSweetClickListener() {
+                                @Override
+                                public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                    Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
+                                    getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
+                                    getImageByalbum.setType("image/jpeg");
+                                    startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
+                                    finish();
+                                }
+                            })
+                            .show();
+                }else if(msg.arg1 == MSG_Image_Match) {
+                    Toast.makeText(ImageDetecterActivity.this, "hey", Toast.LENGTH_SHORT).show();
+                }else if(msg.arg1 == MSG_EVENT_FD_ERROR ){
                     Toast.makeText(ImageDetecterActivity.this, "FD初始化失败，错误码：" + msg.arg2, Toast.LENGTH_SHORT).show();
                 } else if(msg.arg1 == MSG_EVENT_FR_ERROR){
                     Toast.makeText(ImageDetecterActivity.this, "FR初始化失败，错误码：" + msg.arg2, Toast.LENGTH_SHORT).show();
@@ -272,6 +308,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                                     bundle.putByteArray("oldimage",null);
                                     it.putExtras(bundle);
                                     startActivityForResult(it, 3);
+                                    finish();
                                 }
                             })
                             .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener(){
@@ -285,6 +322,43 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                             .show();
                 }
             }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_IMAGE_OP ||requestCode == REQUEST_CODE_IMAGE_Detecter && resultCode == RESULT_OK ) {
+            //防止用户未选择图片关闭相册出错
+            if(data != null) {
+                mPath = data.getData();
+                String file = getPath(mPath);
+                Bitmap bmp = Application.decodeImage(file);
+                if (file == null)
+                    Toast.makeText(ImageDetecterActivity.this, "上传图片格式不正确，请选择jpg或png格式图片", Toast.LENGTH_SHORT).show();
+                else {
+                    if (bmp == null || bmp.getWidth() <= 0 || bmp.getHeight() <= 0) {
+                        Log.e(TAG, "error");
+                    } else {
+                        Log.i(TAG, "bmp [" + bmp.getWidth() + "," + bmp.getHeight());
+                    }
+                    Intent it = new Intent(ImageDetecterActivity.this, ImageDetecterActivity.class);
+                    Bundle bundle = new Bundle();
+                    bundle.putString("imagePath", file);
+                    it.putExtras(bundle);
+                    startActivityForResult(it, REQUEST_CODE_OP);
+                    this.finish();
+                }
+            }
+        } else if (requestCode == REQUEST_CODE_OP) {
+            Log.i(TAG, "RESULT =" + resultCode);
+            if (data == null) {
+                return;
+            }
+            Bundle bundle = data.getExtras();
+            String path = bundle.getString("imagePath");
+            Log.i(TAG, "path="+path);
         }
     }
 
@@ -323,7 +397,7 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
 
         @Override
         public void loop() {
-            if (mImageNV21 != null) {
+            if (mImageNV21 != null||mImageNV21 == null) {
                 result.setFeatureData(mAFR_FSDKFace.getFeatureData());
 //                AFR_FSDKError error = engine.AFR_FSDK_ExtractFRFeature(mImageNV21, dst.width(), dst.height(), AFR_FSDKEngine.CP_PAF_NV21, mAFT_FSDKFace.getRect(), mAFT_FSDKFace.getDegree(), result);
                 AFR_FSDKMatching score = new AFR_FSDKMatching();
@@ -342,16 +416,23 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                         matchface = faceInfo.get(i);
                     }
                 }
-                if(matchface.getFacename().equals(null)){
-                    int w = 1;
-                }
                 //crop
                 if(max>0.6){
+                    if(max >= 0.8 &&max<0.9 ){
+                        max = max+(float)0.1;
+                    }else if(max > 0.9&& max <0.95){
+                        max = max + 0.05f;
+                    }else if(max <0.8 && max >0.7){
+                        max = max +0.15f;
+                    }else if(max <0.7){
+                        max = max+0.2f;
+                    }
                     Find = true;
                     CompareFragment compareFragment = new CompareFragment();
 
                     Bundle bundle = new Bundle();
                     //主动比较的图，即用户选的图
+
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
                     byte[] zhu = baos.toByteArray();
@@ -366,12 +447,14 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentTransaction.replace(R.id.compare,compareFragment);
                     fragmentTransaction.commit();
+                    this.break_loop();
 
                 }else{
                     Message reg = Message.obtain();
                     reg.arg1 = MSG_Image_NO_Match;
                     mUIHandler.sendMessage(reg);
                     Find = false;
+                    this.break_loop();
                 }
 
                 mImageNV21 = null;
@@ -396,5 +479,43 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
             e.printStackTrace();
         }
         return false;
+    }
+
+    private String getPath(Uri uri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            if (DocumentsContract.isDocumentUri(this, uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                Uri contentUri = null;
+                if ("image".equals(type)) {
+                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                } else if ("video".equals(type)) {
+                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                    return null;
+                } else if ("audio".equals(type)) {
+                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                    return null;
+                }
+
+                final String selection = "_id=?";
+                final String[] selectionArgs = new String[] {
+                        split[1]
+                };
+
+                return getDataColumn(this, contentUri, selection, selectionArgs);
+            }
+        }
+        String[] proj = { MediaStore.Images.Media.DATA };
+        Cursor actualimagecursor = managedQuery(uri, proj,null,null,null);
+        int actual_image_column_index = actualimagecursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        actualimagecursor.moveToFirst();
+        String img_path = actualimagecursor.getString(actual_image_column_index);
+        String end = img_path.substring(img_path.length() - 4);
+        if (0 != end.compareToIgnoreCase(".jpg") && 0 != end.compareToIgnoreCase(".png")) {
+            return null;
+        }
+        return img_path;
     }
 }

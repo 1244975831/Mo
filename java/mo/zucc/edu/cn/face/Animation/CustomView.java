@@ -24,6 +24,7 @@ public class CustomView extends View implements Runnable {
     private int flag = 0;
     private int startx;
     private int starty;
+    float times = 1;
     private Rect face = new Rect();
     private Rect dst = new Rect();
     private Rect src = new Rect();
@@ -41,11 +42,12 @@ public class CustomView extends View implements Runnable {
         initPaint();
     }
 
-    public void  Customgetdata(Rect rect,Rect src ,Rect dst,float scale){
+    public void  Customgetdata(Rect rect,Rect src ,Rect dst,float scale,float time){
         this.startx = rect.left;
         this.starty = rect.top;
         this.radiu = (rect.width());
         lag = 1;
+        this.times = time / 250;
 //        this.startx = (int)(DensityUtil.dip2px(getContext(),rect.left)*((float) dst.width() / (float) src.width()))+(int)(dst.left / scale);
 //        this.starty =(int)(DensityUtil.dip2px(getContext(),rect.left)*((float) dst.height() / (float) src.height()))+(int)(dst.top / scale);
 //        this.radiu = (DensityUtil.dip2px(getContext(),rect.bottom)-starty)/2;
@@ -67,7 +69,7 @@ public class CustomView extends View implements Runnable {
         // 实例化画笔并打开抗锯齿
         paint = new Paint(); //设置一个笔刷大小是3的黄色的画笔
         paint.setColor(Color.BLUE);                    //设置画笔颜色
-        paint.setStrokeWidth((float) 5.0);              //线宽
+        paint.setStrokeWidth((float) 5.0*times);              //线宽
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeJoin(Paint.Join.ROUND);
         paint.setStrokeCap(Paint.Cap.ROUND);
@@ -82,7 +84,7 @@ public class CustomView extends View implements Runnable {
 
             canvas.setDrawFilter(new PaintFlagsDrawFilter(0, Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG));
             paint.setColor(this.getResources().getColor(R.color.wai));
-            paint.setStrokeWidth((float) 20.0);
+            paint.setStrokeWidth((float) 16.0*times);
             canvas.drawCircle(startx+radiu/2,starty+radiu/2,radiu/2,paint);
 
 
@@ -92,22 +94,23 @@ public class CustomView extends View implements Runnable {
             }else {
                 paint.setColor(this.getResources().getColor(R.color.nei));
             }
-            paint.setStrokeWidth((float) 5.0);
+            paint.setStrokeWidth((float) 5.0*times);
             canvas.drawArc(rect,54-x,162,false,paint);
             canvas.drawArc(rect,36-x,-162,false,paint);
 
-            RectF rect1 = new RectF(startx+10, starty+10, startx+radiu-10, starty-10+radiu);
+            RectF rect1 = new RectF(startx+8*times, starty+8*times, startx+radiu-8*times, starty-8*times+radiu);
 
             paint.setColor(this.getResources().getColor(R.color.nei));
-            paint.setStrokeWidth((float) 2.0);
+
+            paint.setStrokeWidth((float) 1.5*times);
             canvas.drawArc(rect1,180+x,36,false,paint);
             canvas.drawArc(rect1,300+x,36,false,paint);
             canvas.drawArc(rect1,60+x,36,false,paint);
 
-            RectF rect2 = new RectF(startx-10, starty-10, startx+radiu+10, starty+radiu+10);
+            RectF rect2 = new RectF(startx-8*times, starty-8*times, startx+radiu+8*times, starty+radiu+8*times        );
 
             paint.setColor(this.getResources().getColor(R.color.wai));
-            paint.setStrokeWidth((float) 3.0);
+            paint.setStrokeWidth((float) 3.0*times);
             canvas.drawArc(rect2,160+x,120,false,paint);
             canvas.drawArc(rect2,-20+x,120,false,paint);
 

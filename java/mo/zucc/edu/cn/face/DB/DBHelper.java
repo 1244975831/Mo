@@ -27,7 +27,9 @@ public class DBHelper extends SQLiteOpenHelper {
         //用户列表 id 名字 照片 信息
         db.execSQL("CREATE TABLE IF NOT EXISTS User" +
                 "(_id INTEGER PRIMARY KEY AUTOINCREMENT, facename TEXT, facepic Blob , faceinfo Blob , oldfacepic Blob)");
-
+        //管理员列表
+        db.execSQL("CREATE TABLE IF NOT EXISTS Manager" +
+                "(_id INTEGER PRIMARY KEY AUTOINCREMENT, facename TEXT, facepic Blob , faceinfo Blob , oldfacepic Blob)");
 
         Toast.makeText(mContext, "success", Toast.LENGTH_SHORT).show();
 

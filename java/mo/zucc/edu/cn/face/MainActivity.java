@@ -15,10 +15,12 @@ import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import java.io.ByteArrayOutputStream;
 
@@ -36,9 +38,14 @@ public class MainActivity extends Activity implements OnClickListener {
 	private static final int REQUEST_CODE_IMAGE_OP = 2;
 	private static final int REQUEST_CODE_OP = 3;
 	private static final int REQUEST_CODE_IMAGE_Detecter = 4;
+    private int RegisterClass ;
 	private Uri mPath;
 	private DBManager dbManager ;
-	ImageView face;
+	private ViewFlipper viewFlipper;
+	float x1 =0;
+	float y1 =0;
+	float x = 0;
+	float y = 0;
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onCreate(android.os.Bundle)
 	 */
@@ -48,16 +55,21 @@ public class MainActivity extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		this.setContentView(R.layout.main_test);
 		dbManager = new DBManager(getBaseContext());
-		face = (ImageView)findViewById(R.id.face);
-		FaceInfo faceInfo = dbManager.selectFaces("识别图像");
-//		Bitmap bitmap = BitmapFactory.decodeByteArray(faceInfo.getFacepic(), 0, faceInfo.getFacepic().length);
-//		face.setImageBitmap(bitmap);
+		viewFlipper = (ViewFlipper)findViewById(R.id.ViewFlippers);
+		viewFlipper.setFlipInterval(4000);
+		viewFlipper.setAutoStart(true);
 		//注册人脸
 		View v = this.findViewById(R.id.button1);
 		v.setOnClickListener(this);
 		//检测人脸
 		v = this.findViewById(R.id.button2);
 		v.setOnClickListener(this);
+        //人脸库
+		v = this.findViewById(R.id.button3);
+		v.setOnClickListener(this);
+        //权限管理
+        v = this.findViewById(R.id.button4);
+        v.setOnClickListener(this);
 	}
 
 	/* (non-Javadoc)
@@ -114,9 +126,126 @@ public class MainActivity extends Activity implements OnClickListener {
 	public void onClick(View paramView) {
 		// TODO Auto-generated method stub
 		switch (paramView.getId()) {
+            case R.id.button4:
+                if(dbManager.ManagerIsEmpty()==true){
+                    new SweetAlertDialog(this)
+                            .setTitleText("检测到您尚未设置任何管理员")
+							.setContentText("请尽快设置以保证资料的安全性")
+                            .setConfirmText("立即设置")
+							.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener(){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                    RegisterClass = 1;
+									sweetAlertDialog.setTitleText("请选择注册方式")
+											.setOpenImageListener(new SweetAlertDialog.OnSweetClickListener(){
+												@Override
+												public void onClick(SweetAlertDialog sweetAlertDialog) {
+													Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
+													getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
+													getImageByalbum.setType("image/jpeg");
+													startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
+												}
+											})
+											.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+												@Override
+												public void onClick(SweetAlertDialog sweetAialog) {
+													Intent getImageByCamera = new Intent(
+															"android.media.action.IMAGE_CAPTURE");
+													ContentValues values = new ContentValues(1);
+
+													values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+													mPath = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+													getImageByCamera.putExtra(MediaStore.EXTRA_OUTPUT, mPath);
+
+													startActivityForResult(getImageByCamera, REQUEST_CODE_IMAGE_CAMERA);
+												}
+											})
+											.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+												@Override
+												public void onClick(SweetAlertDialog sweetAlertDialog) {
+													startDetector(0);
+												}
+											})
+											.setCancelText("取消")
+											.showCancelMissButton(false)
+											.showConfirmButton(false)
+											.showConfirmMissButton(false)
+											.setLiebiao(true)
+											.setEdname(false)
+											.isfront(false)
+											.show();
+								}
+							})
+							.setCancelMissListener(new SweetAlertDialog.OnSweetClickListener(){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+//									sweetAlertDialog
+//											.setTitleText("请进行身份验证")
+//											.setContentText("为确保您的资料安全请先进行身份验证")
+//											.setCancelText("取消")
+//											.setConfirmMissText("确定")
+//											.showConfirmButton(false)
+//											.setConfirmMissListener(new SweetAlertDialog.OnSweetClickListener( ){
+//												@Override
+//												public void onClick(SweetAlertDialog sweetAlertDialog) {
+//													startRecognition(1,1);
+//												}
+//											})
+//											.show();
+									Intent intent = new Intent(MainActivity.this,ManagerDBActivity.class);
+									startActivity(intent);
+								}
+							})
+                            .setCancelMissText("稍后设置")
+                            .show();
+					break;
+                }
+                else {
+                    new SweetAlertDialog(this)
+                            .setTitleText("请进行身份验证")
+                            .setContentText("为确保您的资料安全请先进行身份验证")
+                            .setCancelText("取消")
+							.setConfirmMissText("确定")
+							.showConfirmButton(false)
+							.showConfirmMissButton(true)
+							.setConfirmMissListener(new SweetAlertDialog.OnSweetClickListener( ){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									startRecognition(1,1);
+								}
+							})
+                            .show();
+//					Intent intent = new Intent(MainActivity.this,ManagerDBActivity.class);
+//					startActivity(intent);
+					break;
+				}
+			case R.id.button3:
+				if(dbManager.ManagerIsEmpty()==false){
+					new SweetAlertDialog(this)
+							.setTitleText("请进行身份验证")
+							.setContentText("为确保您的资料安全请先进行身份验证")
+							.setCancelText("取消")
+							.setConfirmMissText("确定")
+							.showConfirmButton(false)
+							.setConfirmMissListener(new SweetAlertDialog.OnSweetClickListener( ){
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									startRecognition(1,0);
+								}
+							})
+							.show();
+					break;
+				}
+				Intent intent = new Intent(MainActivity.this,FaceDBActivity.class);
+				startActivity(intent);
+				break;
 			case R.id.button2:
 				if( ((Application)getApplicationContext()).mFaceDB.mRegister.isEmpty() ) {
-					Toast.makeText(this, "没有注册人脸，请先注册！", Toast.LENGTH_SHORT).show();
+					new SweetAlertDialog(MainActivity.this, SweetAlertDialog.ERROR_TYPE)
+							.setTitleText("错误")
+							.setContentText("尚未有注册过人脸，请先前往注册")
+							.setConfirmText("确定")
+							.show();
 				} else {
 					//用sweetAlert 制作感觉较好的选择弹出框
 					new SweetAlertDialog(this)
@@ -152,6 +281,7 @@ public class MainActivity extends Activity implements OnClickListener {
 				}
 				break;
 			case R.id.button1:
+			    RegisterClass = 0 ;
 				new SweetAlertDialog(this)
 						.setTitleText("请选择注册方式")
 						.setOpenImageListener(new SweetAlertDialog.OnSweetClickListener(){
@@ -280,6 +410,7 @@ public class MainActivity extends Activity implements OnClickListener {
 		mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
 		byte[] oldimage = baos.toByteArray();
 		bundle.putByteArray("oldimage",null);
+        bundle.putInt("registerclass",RegisterClass);
 		it.putExtras(bundle);
 		startActivityForResult(it, REQUEST_CODE_OP);
 
@@ -299,6 +430,38 @@ public class MainActivity extends Activity implements OnClickListener {
 		it.putExtra("Camera", camera);
 		startActivityForResult(it, REQUEST_CODE_OP);
 	}
+	//摄像头验证
+	private void startRecognition(int camera,int flag) {
+		Intent it = new Intent(MainActivity.this, RecognitionActivity.class);
+		it.putExtra("Camera", camera);
+		Bundle bundle = new Bundle();
+		bundle.putInt("flag",flag);
+		it.putExtras(bundle);
+		startActivityForResult(it, REQUEST_CODE_OP);
+	}
 
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		if (event.getAction() == MotionEvent.ACTION_DOWN) {
+			x=event.getX();
+			y=event.getY();
+			viewFlipper.stopFlipping();
+			viewFlipper.setAutoStart(false);
+		}
+		if (event.getAction() == MotionEvent.ACTION_UP) {
+			x1=event.getX();
+			y1=event.getY();
+
+			if(x1-x>20){
+				viewFlipper.showPrevious();
+			}
+			if(x-x1>20){
+				viewFlipper.showNext();
+			}
+			viewFlipper.startFlipping();
+			viewFlipper.setAutoStart(true);
+		}
+		return super.onTouchEvent(event);
+	}
 }
 

@@ -12,6 +12,7 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.sql.Blob;
 import java.util.ArrayList;
+import java.util.Map;
 
 import mo.zucc.edu.cn.face.FaceDB;
 import mo.zucc.edu.cn.face.item.FaceInfo;
@@ -123,5 +124,85 @@ public class DBManager {
         }
         cursor.close();
         return data;
+    }
+
+    public void DeleteFaceByMap(Map<Integer, Boolean> map){
+        ArrayList<FaceInfo> data = new ArrayList<>();
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        data = selectAllFaces();
+        for(int i = 0 ; i< data.size() ; i++ ){
+            if(null != map.get(i) && map.get(i) == true){
+                dp.delete("User","_id = ?",new String[]{ data.get(i).getNo()+""});
+            }
+        }
+    }
+
+    public boolean ManagerIsEmpty(){
+        boolean res = true;
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        Cursor cursor = dp.query("Manager",null,null,null,null,null,null);
+        while (cursor.moveToNext()){
+            res = false;
+            break;
+        }
+        return res;
+    }
+
+    public  ArrayList<FaceInfo> selectAllManagers() {
+        ArrayList<FaceInfo> data = new ArrayList<>();
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        Cursor cursor = dp.query("Manager",null,null,null,null,null,null);
+        while (cursor.moveToNext()){
+            FaceInfo datas = new FaceInfo();
+            int id = cursor.getInt(cursor.getColumnIndex("_id"));
+            String facename = cursor.getString(cursor.getColumnIndex("facename"));
+            byte[] facepic = cursor.getBlob(cursor.getColumnIndex("facepic"));
+            byte[] faceinfo = cursor.getBlob(cursor.getColumnIndex("faceinfo"));
+            byte[] oldfacepic = cursor.getBlob(cursor.getColumnIndex("oldfacepic"));
+            datas.setNo(id);
+            datas.setFacename(facename);
+            datas.setFacepic(facepic);
+            datas.setFaceinfo(faceinfo);
+            datas.setOldfacepic(oldfacepic);
+            data.add(datas);
+        }
+        cursor.close();
+        return data;
+    }
+
+
+    public void DeleteManagerByMap(Map<Integer, Boolean> map){
+        ArrayList<FaceInfo> data = new ArrayList<>();
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        data = selectAllFaces();
+        for(int i = 0 ; i< data.size() ; i++ ){
+            if(null != map.get(i) && map.get(i) == true){
+                dp.delete("Manager","_id = ?",new String[]{ data.get(i).getNo()+""});
+            }
+        }
+    }
+
+    public void addManager(String facename , byte[] faceinfo ,Bitmap facepic ,Bitmap oldfacepic ) {
+        ContentValues values = new ContentValues();
+        //存人脸
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        facepic.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        byte[] faceimg = baos.toByteArray();
+        //存原照
+//        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+//        oldfacepic.compress(Bitmap.CompressFormat.PNG, 100, ba);
+//        byte[] oldfaceimg = ba.toByteArray();
+        //写入User表
+        try {
+            values.put("facename", facename);
+            values.put("faceinfo", faceinfo);
+            values.put("facepic", faceimg);
+//            values.put("oldfacepic", oldfaceimg);
+            db.insert("Manager", null, values);
+            values.clear();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

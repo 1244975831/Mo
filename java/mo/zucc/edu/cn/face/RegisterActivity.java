@@ -62,6 +62,8 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 	private final static int MSG_EVENT_NO_FEATURE = 0x1003;
 	private final static int MSG_EVENT_FD_ERROR = 0x1004;
 	private final static int MSG_EVENT_FR_ERROR = 0x1005;
+	private int Face_Size;
+	private int click_times;
 	private UIHandler mUIHandler;
 	// Intent data.
 	private String 	mFilePath;
@@ -74,9 +76,10 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 	private Rect src = new Rect();
 	private Rect dst = new Rect();
 	private Thread view;
+	private int RegisterClass;
 	private EditText mEditText;
 	private ExtImageView mExtImageView;
-	private HListView mHListView;
+//	private HListView mHListView;
 	private RegisterViewAdapter mRegisterViewAdapter;
 	private AFR_FSDKFace mAFR_FSDKFace;
 
@@ -93,9 +96,9 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 		}
 
 		mRegisterViewAdapter = new RegisterViewAdapter(this);
-		mHListView = (HListView)findViewById(R.id.hlistView);
-		mHListView.setAdapter(mRegisterViewAdapter);
-		mHListView.setOnItemClickListener(mRegisterViewAdapter);
+//		mHListView = (HListView)findViewById(R.id.hlistView);
+//		mHListView.setAdapter(mRegisterViewAdapter);
+//		mHListView.setOnItemClickListener(mRegisterViewAdapter);
 		customView = (CustomView)findViewById(R.id.customView);
 		mUIHandler = new UIHandler();
 		mBitmap = Application.decodeImage(mFilePath);
@@ -103,13 +106,6 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 		mSurfaceView = (SurfaceView)this.findViewById(R.id.surfaceView);
 		mSurfaceView.getHolder().addCallback(this);
 		view = new Thread(new Runnable() {
-			double y = 0;
-			int time = 0 ;
-			private int x = 50;
-			private int flag = 0;
-			private int startx;
-			private int starty;
-			private int radiu;
 			@Override
 			public void run() {
 				while (mSurfaceHolder == null) {
@@ -120,7 +116,6 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 						e.printStackTrace();
 					}
 				}
-
 				byte[] data = new byte[mBitmap.getWidth() * mBitmap.getHeight() * 3 / 2];
 				ImageConverter convert = new ImageConverter();
 				convert.initial(mBitmap.getWidth(), mBitmap.getHeight(), ImageConverter.CP_PAF_NV21);
@@ -147,7 +142,9 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 				Log.d(TAG, "AFD_FSDK_StillImageFaceDetection =" + err.getCode() + "<" + result.size());
 				while (mSurfaceHolder != null) {
 					Canvas canvas = mSurfaceHolder.lockCanvas();
-					if (canvas != null) {
+					Face_Size = result.size();
+					click_times = 1;
+					if (canvas != null&&result.size()==1) {
 						Paint mPaint = new Paint();
 						boolean fit_horizontal = canvas.getWidth() / (float)src.width() < canvas.getHeight() / (float)src.height() ? true : false;
 						float scale = 1.0f;
@@ -173,8 +170,39 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 							mPaint.setStrokeWidth(10.0f);
 							mPaint.setStyle(Paint.Style.STROKE);
 //							canvas.drawRect(face.getRect(), mPaint);
-							customView.Customgetdata(face.getRect(),src,dst,scale);
+							customView.Customgetdata(face.getRect(),src,dst,scale, mBitmap.getWidth());
 							new Thread(customView).start();
+						}
+						canvas.restore();
+						mSurfaceHolder.unlockCanvasAndPost(canvas);
+						break;
+					}
+					else if(canvas != null&&result.size()>1){
+						Paint mPaint = new Paint();
+						boolean fit_horizontal = canvas.getWidth() / (float)src.width() < canvas.getHeight() / (float)src.height() ? true : false;
+						float scale = 1.0f;
+						if (fit_horizontal) {
+							scale = canvas.getWidth() / (float)src.width();
+							dst.left = 0;
+							dst.top = (canvas.getHeight() - (int)(src.height() * scale)) / 2;
+							dst.right = dst.left + canvas.getWidth();
+							dst.bottom = dst.top + (int)(src.height() * scale);
+						} else {
+							scale = canvas.getHeight() / (float)src.height();
+							dst.left = (canvas.getWidth() - (int)(src.width() * scale)) / 2;
+							dst.top = 0;
+							dst.right = dst.left + (int)(src.width() * scale);
+							dst.bottom = dst.top + canvas.getHeight();
+						}
+						canvas.drawBitmap(mBitmap, src, dst, mPaint);
+						canvas.save();
+						canvas.scale((float) dst.width() / (float) src.width(), (float) dst.height() / (float) src.height());
+						canvas.translate(dst.left / scale, dst.top / scale);
+						for (AFD_FSDKFace face : result) {
+							mPaint.setColor(Color.RED);
+							mPaint.setStrokeWidth(10.0f);
+							mPaint.setStyle(Paint.Style.STROKE);
+							canvas.drawRect(face.getRect(), mPaint);
 						}
 						canvas.restore();
 						mSurfaceHolder.unlockCanvasAndPost(canvas);
@@ -249,6 +277,7 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 	private boolean getIntentData(Bundle bundle) {
 		try {
 			mFilePath = bundle.getString("imagePath");
+			RegisterClass = bundle.getInt("registerclass");
 //			getimage = bundle.getByteArray("oldimage");
 //			oldmap =  BitmapFactory.decodeByteArray(getimage, 0, getimage.length);
 			if (mFilePath == null || mFilePath.isEmpty()) {
@@ -304,35 +333,107 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 									}else{
 										((Application)RegisterActivity.this.getApplicationContext()).mFaceDB.addFace(edname, mAFR_FSDKFace,1);
 										dbManager= new DBManager(getBaseContext());
-										dbManager.addFace(edname,mAFR_FSDKFace.getFeatureData(),face,null);
+										if(RegisterClass == 0){
+											dbManager.addFace(edname,mAFR_FSDKFace.getFeatureData(),face,null);
+										}else{
+											dbManager.addManager(edname,mAFR_FSDKFace.getFeatureData(),face,null);
+										}
 										mRegisterViewAdapter.notifyDataSetChanged();
-										sweetAlertDialog.setTitleText("注册成功!")
-												.setContentText("您上传的图片已经成功保存至识别库内!")
-												.setConfirmText("确定")
-												.showCancelButton(false)
-												.setCancelClickListener(null)
-												.setConfirmClickListener(null)
-												.setEdname(false)
-												.changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+										if(Face_Size == 1){
+											sweetAlertDialog.setTitleText("注册成功!")
+													.setContentText("您上传的信息已经成功保存至识别库内!")
+													.setConfirmText("确定")
+													.showCancelButton(false)
+													.setCancelClickListener(null)
+													.setConfirmClickListener( new SweetAlertDialog.OnSweetClickListener(){
+														@Override
+														public void onClick(SweetAlertDialog sweetAlertDialog) {
+															finish();
+														}
+													})
+													.setEdname(false)
+													.changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+										}else{
+											if(click_times<Face_Size){
+												sweetAlertDialog.setTitleText("注册成功!")
+														.setContentText("您上传的信息已经成功保存至识别库内!")
+														.setConfirmText("确定")
+														.showConfirmButton(false)
+														.showCancelButton(false)
+														.setCancelClickListener(null)
+														.setConfirmClickListener(null)
+														.setEdname(false)
+														.changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+												click_times++;
+											}else{
+												sweetAlertDialog.setTitleText("注册成功!")
+														.setContentText("您上传的信息已经成功保存至识别库内!")
+														.setConfirmText("确定")
+														.showCancelButton(false)
+														.setCancelClickListener(null)
+														.setConfirmClickListener( new SweetAlertDialog.OnSweetClickListener(){
+															@Override
+															public void onClick(SweetAlertDialog sweetAlertDialog) {
+																finish();
+															}
+														})
+														.setEdname(false)
+														.changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+											}
+										}
+
 									}
 								}
 							})
 							.setCancelClickListener(new SweetAlertDialog.OnSweetClickListener(){
 								@Override
 								public void onClick(SweetAlertDialog sweetAlertDialog) {
-									sweetAlertDialog.setTitleText("取消注册!")
-											.setContentText("您的注册操作已取消")
-											.setConfirmText("确定")
-											.showCancelButton(false)
-											.setCancelClickListener(null)
-											.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener(){
-												@Override
-												public void onClick(SweetAlertDialog sweetAlertDialog) {
-													finish();
-												}
-											})
-											.setEdname(false)
-											.changeAlertType(SweetAlertDialog.ERROR_TYPE);
+									if(Face_Size == 1) {
+										sweetAlertDialog.setTitleText("取消注册!")
+												.setContentText("您的注册操作已取消")
+												.setConfirmText("确定")
+												.showCancelButton(false)
+												.setCancelClickListener(null)
+												.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+													@Override
+													public void onClick(SweetAlertDialog sweetAlertDialog) {
+														finish();
+													}
+												})
+												.setEdname(false)
+												.changeAlertType(SweetAlertDialog.ERROR_TYPE);
+									}else {
+										if(click_times<Face_Size) {
+											sweetAlertDialog.setTitleText("取消注册!")
+													.setContentText("您的注册操作已取消")
+													.setConfirmText("下一个")
+													.setCancelText("返回主页")
+													.setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+														@Override
+														public void onClick(SweetAlertDialog sweetAlertDialog) {
+															finish();
+														}
+													})
+													.setConfirmClickListener(null)
+													.setEdname(false)
+													.changeAlertType(SweetAlertDialog.ERROR_TYPE);
+											click_times++;
+										}else {
+											sweetAlertDialog.setTitleText("取消注册!")
+													.setContentText("您的注册操作已取消")
+													.setConfirmText("确定")
+													.showCancelButton(false)
+													.setCancelClickListener(null)
+													.setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+														@Override
+														public void onClick(SweetAlertDialog sweetAlertDialog) {
+															finish();
+														}
+													})
+													.setEdname(false)
+													.changeAlertType(SweetAlertDialog.ERROR_TYPE);
+										}
+									}
 								}
 							})
 							.show();
@@ -419,7 +520,7 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 
 		@Override
 		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-			Log.d("onItemClick", "onItemClick = " + position + "pos=" + mHListView.getScroll());
+//			Log.d("onItemClick", "onItemClick = " + position + "pos=" + mHListView.getScroll());
 			final String name = ((Application)mContext.getApplicationContext()).mFaceDB.mRegister.get(position).mName;
 			final int count = ((Application)mContext.getApplicationContext()).mFaceDB.mRegister.get(position).mFaceList.size();
 			new AlertDialog.Builder(RegisterActivity.this)

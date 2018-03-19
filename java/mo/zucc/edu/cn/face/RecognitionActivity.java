@@ -1,6 +1,7 @@
 package mo.zucc.edu.cn.face;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -45,7 +46,7 @@ import mo.zucc.edu.cn.face.item.FaceInfo;
  *Created by mo on 2017/10/11.
  */
 
-public class DetecterActivity extends Activity implements OnCameraListener, View.OnTouchListener, Camera.AutoFocusCallback {
+public class RecognitionActivity extends Activity implements OnCameraListener, View.OnTouchListener, Camera.AutoFocusCallback {
 	private final String TAG = this.getClass().getSimpleName();
 
 	private int mWidth, mHeight, mFormat;
@@ -59,6 +60,7 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 
 	int mCameraID;
 	int mCameraRotate;
+	int mFlag;
 	boolean mCameraMirror;
 	byte[] mImageNV21 = null;
 	FRAbsLoop mFRAbsLoop = null;
@@ -66,20 +68,14 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 	Handler mHandler;
     private DBManager dbManager;
 
-	Runnable hide = new Runnable() {
-		@Override
-		public void run() {
-			mTextView.setAlpha(0.5f);
-			mImageView.setImageAlpha(128);
-		}
-	};
+
 
 	class FRAbsLoop extends AbsLoop {
 
 		AFR_FSDKVersion version = new AFR_FSDKVersion();
 		AFR_FSDKEngine engine = new AFR_FSDKEngine();
 		AFR_FSDKFace result = new AFR_FSDKFace();
-		List<FaceDB.FaceRegist> mResgist = ((Application)DetecterActivity.this.getApplicationContext()).mFaceDB.mRegister;
+		List<FaceDB.FaceRegist> mResgist = ((Application)RecognitionActivity.this.getApplicationContext()).mFaceDB.mRegister;
 
 		@Override
 		public void setup() {
@@ -111,7 +107,7 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
                 FaceInfo matchface = new FaceInfo();
                 AFR_FSDKFace face = new AFR_FSDKFace();
                 dbManager= new DBManager(getBaseContext());
-                ArrayList<FaceInfo> faceInfo = dbManager.selectAllFaces();
+                ArrayList<FaceInfo> faceInfo = dbManager.selectAllManagers();
                 for(int i = 0 ; i<faceInfo.size() ; i++){
                     face.setFeatureData(faceInfo.get(i).getFaceinfo());
                     engine.AFR_FSDK_FacePairMatching(result, face, score);
@@ -134,56 +130,16 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 				}
 
 				if (max > 0.6f) {
-					//fr success.
-					if(max >= 0.8 &&max<0.9 ){
-						max = max+(float)0.1;
-					}else if(max > 0.9&& max <0.95){
-						max = max + 0.05f;
-					}else if(max <0.8 && max >0.7){
-						max = max +0.15f;
-					}else if(max <0.7){
-						max = max+0.2f;
+					if(mFlag == 1){
+						Intent intent = new Intent(RecognitionActivity.this,ManagerDBActivity.class);
+						startActivity(intent);
+						finish();
+					}else{
+						Intent intent = new Intent(RecognitionActivity.this,FaceDBActivity.class);
+						startActivity(intent);
+						finish();
 					}
-					final float max_score = max * 100;
-					Log.d(TAG, "fit Score:" + max + ", NAME:" + name);
-					final String mNameShow = name;
-					mHandler.removeCallbacks(hide);
-					mHandler.post(new Runnable() {
-						@Override
-						public void run() {
-							mTextView.setAlpha(1.0f);
-							mTextView.setText(mNameShow);
-							mTextView.setTextColor(Color.RED);
-							mTextView1.setVisibility(View.VISIBLE);
-							DecimalFormat decimalFormat=new DecimalFormat(".0");
-							String pecent = decimalFormat.format(max_score);
-							mTextView1.setText("置信度：" + pecent +"%");
-							mTextView1.setTextColor(Color.RED);
-							mImageView.setRotation(mCameraRotate);
-							if (mCameraMirror) {
-								mImageView.setScaleY(-1);
-							}
-							mImageView.setImageAlpha(255);
-							mImageView.setImageBitmap(bmp);
-						}
-					});
-				} else {
-					final String mNameShow = "未识别";
-					DetecterActivity.this.runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
-							mTextView.setAlpha(1.0f);
-							mTextView1.setVisibility(View.INVISIBLE);
-							mTextView.setText(mNameShow);
-							mTextView.setTextColor(Color.RED);
-							mImageView.setImageAlpha(255);
-							mImageView.setRotation(mCameraRotate);
-							if (mCameraMirror) {
-								mImageView.setScaleY(-1);
-							}
-							mImageView.setImageBitmap(bmp);
-						}
-					});
+
 				}
 				mImageNV21 = null;
 			}
@@ -197,9 +153,6 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 		}
 	}
 
-	private TextView mTextView;
-	private TextView mTextView1;
-	private ImageView mImageView;
 
 	/* (non-Javadoc)
 	 * @see android.app.Activity#onCreate(android.os.Bundle)
@@ -212,12 +165,17 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 		mCameraID = getIntent().getIntExtra("Camera", 0) == 0 ? Camera.CameraInfo.CAMERA_FACING_BACK : Camera.CameraInfo.CAMERA_FACING_FRONT;
 		mCameraRotate = getIntent().getIntExtra("Camera", 0) == 0 ? 90 : 270;
 		mCameraMirror = getIntent().getIntExtra("Camera", 0) == 0 ? false : true;
+		if (!getIntentData(getIntent().getExtras())) {
+			Log.e(TAG, "getIntentData fail!");
+			this.finish() ;
+		}
+
 		mWidth = 1280;
 		mHeight = 960;
 		mFormat = ImageFormat.NV21;
 		mHandler = new Handler();
 
-		setContentView(R.layout.activity_camera);
+		setContentView(R.layout.activity_recognition);
 		mGLSurfaceView = (CameraGLSurfaceView) findViewById(R.id.glsurfaceView);
 		mGLSurfaceView.setOnTouchListener(this);
 		mSurfaceView = (CameraSurfaceView) findViewById(R.id.surfaceView);
@@ -226,12 +184,7 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 		mSurfaceView.debug_print_fps(true, false);
 
 		//snap
-		mTextView = (TextView) findViewById(R.id.textView);
-		mTextView.setText("");
-		mTextView1 = (TextView) findViewById(R.id.textView1);
-		mTextView1.setText("");
 
-		mImageView = (ImageView) findViewById(R.id.imageView);
 
 		AFT_FSDKError err = engine.AFT_FSDK_InitialFaceEngine(FaceDB.appid, FaceDB.ft_key, AFT_FSDKEngine.AFT_OPF_0_HIGHER_EXT, 16, 5);
 		Log.d(TAG, "AFT_FSDK_InitialFaceEngine =" + err.getCode());
@@ -319,7 +272,7 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 				mAFT_FSDKFace = result.get(0).clone();
 				mImageNV21 = data.clone();
 			} else {
-				mHandler.postDelayed(hide, 3000);
+
 			}
 		}
 		//copy rects
@@ -354,5 +307,15 @@ public class DetecterActivity extends Activity implements OnCameraListener, View
 		if (success) {
 			Log.d(TAG, "Camera Focus SUCCESS!");
 		}
+	}
+
+	private boolean getIntentData(Bundle bundle) {
+		try {
+			mFlag = bundle.getInt("flag");
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 }
