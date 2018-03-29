@@ -58,6 +58,7 @@ import cn.pedant.SweetAlert.SweetAlertDialog;
 import mo.zucc.edu.cn.face.Animation.CustomView;
 import mo.zucc.edu.cn.face.DB.DBManager;
 import mo.zucc.edu.cn.face.Fragmnet.CompareFragment;
+import mo.zucc.edu.cn.face.NetWork.GetNetResoure;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
 import static mo.zucc.edu.cn.face.MainActivity.getDataColumn;
@@ -93,12 +94,14 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
     private boolean Find = false;
     private int mWidth, mHeight, mFormat;
     private CustomView customView;
+    private int style;
     AFT_FSDKFace mAFT_FSDKFace = null;
+    private ArrayList<FaceInfo> infos =  new ArrayList<FaceInfo>();;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_detecter);
-
+        dbManager = new DBManager(getBaseContext());
         if (!getIntentData(getIntent().getExtras())) {
             Log.e(TAG, "getIntentData fail!");
             this.finish() ;
@@ -145,6 +148,10 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                 err  = engine.AFD_FSDK_StillImageFaceDetection(data, mBitmap.getWidth(), mBitmap.getHeight(), AFD_FSDKEngine.CP_PAF_NV21, result);
                 Log.d(TAG, "AFD_FSDK_StillImageFaceDetection =" + err.getCode() + "<" + result.size());
                 while (mSurfaceHolder != null) {
+                    if(style!=0){
+                        GetNetResoure getNetResoure = new GetNetResoure();
+                        infos .addAll(dbManager.selectAllNet());
+                    }
                     Canvas canvas = mSurfaceHolder.lockCanvas();
                     if (canvas != null) {
                         Paint mPaint = new Paint();
@@ -406,16 +413,30 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
                 FaceInfo matchface = new FaceInfo();
                 matchface.setFacename(null);
                 AFR_FSDKFace face = new AFR_FSDKFace();
-                dbManager= new DBManager(getBaseContext());
-                ArrayList<FaceInfo> faceInfo = dbManager.selectAllFaces();
-                for(int i = 0 ; i<faceInfo.size() ; i++){
-                    face.setFeatureData(faceInfo.get(i).getFaceinfo());
-                    engine.AFR_FSDK_FacePairMatching(result, face, score);
-                    if ( max < score.getScore()){
-                        max = score.getScore();
-                        matchface = faceInfo.get(i);
+                if(style == 0){
+                    dbManager= new DBManager(getBaseContext());
+                    ArrayList<FaceInfo> faceInfo = dbManager.selectAllFaces();
+                    for(int i = 0 ; i<faceInfo.size() ; i++){
+                        face.setFeatureData(faceInfo.get(i).getFaceinfo());
+                        face.setFeatureData(dbManager.trans(faceInfo.get(i).getFaceinfo()));
+                        engine.AFR_FSDK_FacePairMatching(result, face, score);
+                        if ( max < score.getScore()){
+                            max = score.getScore();
+                            matchface = faceInfo.get(i);
+                        }
+                    }
+                }else{
+                    ArrayList<FaceInfo> faceInfo = infos;
+                    for(int i = 0 ; i<faceInfo.size() ; i++){
+                        face.setFeatureData(faceInfo.get(i).getFaceinfo());
+                        engine.AFR_FSDK_FacePairMatching(result, face, score);
+                        if ( max < score.getScore()){
+                            max = score.getScore();
+                            matchface = faceInfo.get(i);
+                        }
                     }
                 }
+
                 //crop
                 if(max>0.6){
                     if(max >= 0.8 &&max<0.9 ){
@@ -470,6 +491,8 @@ public class ImageDetecterActivity extends Activity implements SurfaceHolder.Cal
     private boolean getIntentData(Bundle bundle) {
         try {
             mFilePath = bundle.getString("imagePath");
+            style = bundle.getInt("style");
+
             if (mFilePath == null || mFilePath.isEmpty()) {
                 return false;
             }

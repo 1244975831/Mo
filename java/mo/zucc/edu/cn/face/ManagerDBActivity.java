@@ -78,7 +78,7 @@ public class ManagerDBActivity extends AppCompatActivity implements MultiChoiceM
 		mGridAdapter = new GridAdapter(this);
 		mGridView.setAdapter(mGridAdapter);
 		mGridView.setMultiChoiceModeListener(this);
-
+		mGridAdapter.notifyDataSetChanged();
 	}
 
 	public void InitData(){
@@ -90,7 +90,7 @@ public class ManagerDBActivity extends AppCompatActivity implements MultiChoiceM
 			mImgIds[m] = bitface;
 
 		}
-
+//		mGridAdapter.notifyDataSetChanged();
 	}
 
 	/** Override MultiChoiceModeListener start **/
@@ -145,17 +145,8 @@ public class ManagerDBActivity extends AppCompatActivity implements MultiChoiceM
 						.setCancelText("取消")
 						.show();
 
-//			for (int i = 0; i < mGridView.getCount(); i++) {
-//				mGridView.setItemChecked(i, true);
-//				mSelectMap.put(i, true);
-//			}
 			break;
-//		case R.id.menu_unselect:
-//			for (int i = 0; i < mGridView.getCount(); i++) {
-//				mGridView.setItemChecked(i, false);
-//				mSelectMap.clear();
-//			}
-//			break;
+
 		}
 		return true;
 	}
@@ -317,5 +308,12 @@ public class ManagerDBActivity extends AppCompatActivity implements MultiChoiceM
 			return null;
 		}
 		return img_path;
+	}
+
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		InitData();
+		mGridAdapter.notifyDataSetChanged();
 	}
 }

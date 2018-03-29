@@ -5,6 +5,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.renderscript.Sampler;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import mo.zucc.edu.cn.face.FaceDB;
+import mo.zucc.edu.cn.face.R;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
 /**
@@ -64,13 +67,17 @@ public class DBManager {
 //        byte[] oldfaceimg = ba.toByteArray();
         //写入User表
         try {
+//            initnet(faceinfo,facename,faceimg);
             values.put("facename", facename);
             values.put("faceinfo", faceinfo);
             values.put("facepic", faceimg);
-//            values.put("oldfacepic", oldfaceimg);
+            byte[] srtbyte = faceinfo ;
+            String str = null;
+            String res = new String(srtbyte,"ISO-8859-1");
+            srtbyte = res.getBytes("ISO-8859-1");
             db.insert("User", null, values);
+            db.insert("Net",null,values);
             values.clear();
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -174,7 +181,7 @@ public class DBManager {
     public void DeleteManagerByMap(Map<Integer, Boolean> map){
         ArrayList<FaceInfo> data = new ArrayList<>();
         SQLiteDatabase dp=helper.getWritableDatabase();
-        data = selectAllFaces();
+        data = selectAllManagers();
         for(int i = 0 ; i< data.size() ; i++ ){
             if(null != map.get(i) && map.get(i) == true){
                 dp.delete("Manager","_id = ?",new String[]{ data.get(i).getNo()+""});
@@ -197,12 +204,55 @@ public class DBManager {
             values.put("facename", facename);
             values.put("faceinfo", faceinfo);
             values.put("facepic", faceimg);
-//            values.put("oldfacepic", oldfaceimg);
             db.insert("Manager", null, values);
             values.clear();
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public byte[] trans(byte[]face){
+        byte[] srtbyte = face ;
+        String str = null;
+        try {
+            String res = new String(srtbyte,"ISO-8859-1");
+            srtbyte = res.getBytes("ISO-8859-1");
+        }catch (Exception e ){
+
+        }
+        return  srtbyte;
+    }
+
+    public  void initnet(byte[] res,String name,byte[] faceimg){
+        ContentValues values = new ContentValues();
+        //存人脸
+        try {
+            values.put("name", name);
+            values.put("faceinfo", res);
+            values.put("facepic", faceimg);
+            db.insert("Net", null, values);
+            values.clear();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public  ArrayList<FaceInfo> selectAllNet(){
+        ArrayList<FaceInfo> faceInfos = new ArrayList<FaceInfo>();
+        SQLiteDatabase dp=helper.getWritableDatabase();
+        Cursor cursor = dp.query("Net",null,null,null,null,null,null);
+        while (cursor.moveToNext()){
+            FaceInfo datas = new FaceInfo();
+            String name = cursor.getString(cursor.getColumnIndex("facename"));
+            byte[] faceinfo = cursor.getBlob(cursor.getColumnIndex("faceinfo"));
+            byte[] facepic = cursor.getBlob(cursor.getColumnIndex("facepic"));
+            datas.setFacename(name);
+            datas.setFaceinfo(faceinfo);
+            datas.setFacepic(facepic);
+            faceInfos.add(datas);
+        }
+        cursor.close();
+        return faceInfos;
     }
 }

@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -26,6 +27,9 @@ import java.io.ByteArrayOutputStream;
 
 import cn.pedant.SweetAlert.SweetAlertDialog;
 import mo.zucc.edu.cn.face.DB.DBManager;
+import mo.zucc.edu.cn.face.NetWork.CurUrl;
+import mo.zucc.edu.cn.face.NetWork.GetNetResoure;
+import mo.zucc.edu.cn.face.NetWork.HttpUrlConnection;
 import mo.zucc.edu.cn.face.item.FaceInfo;
 
 /**
@@ -39,9 +43,11 @@ public class MainActivity extends Activity implements OnClickListener {
 	private static final int REQUEST_CODE_OP = 3;
 	private static final int REQUEST_CODE_IMAGE_Detecter = 4;
     private int RegisterClass ;
+	private UIHandler mUIHandler;
 	private Uri mPath;
 	private DBManager dbManager ;
 	private ViewFlipper viewFlipper;
+    private  int style ;
 	float x1 =0;
 	float y1 =0;
 	float x = 0;
@@ -58,6 +64,8 @@ public class MainActivity extends Activity implements OnClickListener {
 		viewFlipper = (ViewFlipper)findViewById(R.id.ViewFlippers);
 		viewFlipper.setFlipInterval(4000);
 		viewFlipper.setAutoStart(true);
+		mUIHandler = new UIHandler();
+		dbManager.selectAllNet();
 		//注册人脸
 		View v = this.findViewById(R.id.button1);
 		v.setOnClickListener(this);
@@ -70,6 +78,12 @@ public class MainActivity extends Activity implements OnClickListener {
         //权限管理
         v = this.findViewById(R.id.button4);
         v.setOnClickListener(this);
+		//网络对比
+		v = this.findViewById(R.id.button5);
+		v.setOnClickListener(this);
+
+
+
 	}
 
 	/* (non-Javadoc)
@@ -100,7 +114,7 @@ public class MainActivity extends Activity implements OnClickListener {
 						Log.i(TAG, "bmp [" + bmp.getWidth() + "," + bmp.getHeight());
 					}
 					if (requestCode == REQUEST_CODE_IMAGE_Detecter) {
-						startImageDetector(bmp, file);
+						startImageDetector(bmp, file,style);
 					} else {
 						startRegister(bmp, file);
 					}
@@ -126,6 +140,28 @@ public class MainActivity extends Activity implements OnClickListener {
 	public void onClick(View paramView) {
 		// TODO Auto-generated method stub
 		switch (paramView.getId()) {
+			case R.id.button5:
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            String url = "http://" + CurUrl.url;
+                             HttpUrlConnection.readParse(url);
+                            style = 1;
+                            Intent getImageByalbum = new Intent(Intent.ACTION_GET_CONTENT);
+                            getImageByalbum.addCategory(Intent.CATEGORY_OPENABLE);
+                            getImageByalbum.setType("image/jpeg");
+                            startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_Detecter);
+                        }catch (Exception e){
+							Message reg = Message.obtain();
+							reg.what = 1;
+							reg.arg1 = 1;
+							mUIHandler.sendMessage(reg);
+                        }
+                    }
+                });
+                thread.start();
+				break;
             case R.id.button4:
                 if(dbManager.ManagerIsEmpty()==true){
                     new SweetAlertDialog(this)
@@ -146,7 +182,7 @@ public class MainActivity extends Activity implements OnClickListener {
 													startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
 												}
 											})
-											.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+											.setOpenFrontCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
 												@Override
 												public void onClick(SweetAlertDialog sweetAialog) {
 													Intent getImageByCamera = new Intent(
@@ -172,7 +208,7 @@ public class MainActivity extends Activity implements OnClickListener {
 											.showConfirmMissButton(false)
 											.setLiebiao(true)
 											.setEdname(false)
-											.isfront(false)
+											.isfront(true)
 											.show();
 								}
 							})
@@ -248,6 +284,7 @@ public class MainActivity extends Activity implements OnClickListener {
 							.show();
 				} else {
 					//用sweetAlert 制作感觉较好的选择弹出框
+                    style = 0;
 					new SweetAlertDialog(this)
 							.setTitleText("请选择检测方式")
 							.setOpenImageListener(new SweetAlertDialog.OnSweetClickListener(){
@@ -293,7 +330,7 @@ public class MainActivity extends Activity implements OnClickListener {
 								startActivityForResult(getImageByalbum, REQUEST_CODE_IMAGE_OP);
 							}
 						})
-						.setOpenCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
+						.setOpenFrontCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
 							@Override
 							public void onClick(SweetAlertDialog sweetAlertDialog) {
 								Intent getImageByCamera = new Intent(
@@ -307,16 +344,11 @@ public class MainActivity extends Activity implements OnClickListener {
 								startActivityForResult(getImageByCamera, REQUEST_CODE_IMAGE_CAMERA);
 							}
 						})
-						.setOpenFrontCameraClickListener(new SweetAlertDialog.OnSweetClickListener(){
-							@Override
-							public void onClick(SweetAlertDialog sweetAlertDialog) {
-								startDetector(1);
-							}
-						})
 						.setCancelText("取消")
+						.isfront(true)
+						.isback(false)
                         .setLiebiao(true)
 						.setEdname(false)
-						.isfront(false)
 						.show();
 				break;
 			default:;
@@ -398,6 +430,8 @@ public class MainActivity extends Activity implements OnClickListener {
 		return null;
 	}
 
+
+
 	/**
 	 * @param mBitmap
 	 */
@@ -417,12 +451,23 @@ public class MainActivity extends Activity implements OnClickListener {
 //		face.setImageBitmap(mBitmap);
 
 	}
-	private void startImageDetector(Bitmap mBitmap, String file) {
-		Intent it = new Intent(MainActivity.this, ImageDetecterActivity.class);
-		Bundle bundle = new Bundle();
-		bundle.putString("imagePath", file);
-		it.putExtras(bundle);
-		startActivityForResult(it, REQUEST_CODE_OP);
+	private void startImageDetector(Bitmap mBitmap, String file ,int style) {
+        if(style == 0 ){
+            Intent it = new Intent(MainActivity.this, ImageDetecterActivity.class);
+            Bundle bundle = new Bundle();
+            bundle.putString("imagePath", file);
+            bundle.putInt("style", style);
+            it.putExtras(bundle);
+            startActivityForResult(it, REQUEST_CODE_OP);
+        }else{
+            Intent it = new Intent(MainActivity.this, ImageDetecterActivity.class);
+            Bundle bundle = new Bundle();
+            bundle.putString("imagePath", file);
+            bundle.putInt("style", style);
+            it.putExtras(bundle);
+			startActivityForResult(it, REQUEST_CODE_OP);
+        }
+
 	}
 	//摄像头识别
 	private void startDetector(int camera) {
@@ -462,6 +507,20 @@ public class MainActivity extends Activity implements OnClickListener {
 			viewFlipper.setAutoStart(true);
 		}
 		return super.onTouchEvent(event);
+	}
+	class UIHandler extends android.os.Handler {
+		@Override
+		public void handleMessage(Message msg) {
+			if (msg.what == 1) {
+				if (msg.arg1 == 1) {
+					new SweetAlertDialog(MainActivity.this, SweetAlertDialog.ERROR_TYPE)
+							.setTitleText("错误")
+							.setContentText("尚未有注册过人脸，请先前往注册")
+							.setConfirmText("确定")
+							.show();
+				}
+			}
+		}
 	}
 }
 

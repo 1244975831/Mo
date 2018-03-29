@@ -31,6 +31,9 @@ public class DBHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE IF NOT EXISTS Manager" +
                 "(_id INTEGER PRIMARY KEY AUTOINCREMENT, facename TEXT, facepic Blob , faceinfo Blob , oldfacepic Blob)");
 
+        db.execSQL("CREATE TABLE IF NOT EXISTS Net" +
+                "(_id INTEGER PRIMARY KEY AUTOINCREMENT,facename TEXT,  facepic Blob , faceinfo Blob , int chance)");
+
         Toast.makeText(mContext, "success", Toast.LENGTH_SHORT).show();
 
     }

@@ -177,7 +177,7 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 						mSurfaceHolder.unlockCanvasAndPost(canvas);
 						break;
 					}
-					else if(canvas != null&&result.size()>1){
+					else {
 						Paint mPaint = new Paint();
 						boolean fit_horizontal = canvas.getWidth() / (float)src.width() < canvas.getHeight() / (float)src.height() ? true : false;
 						float scale = 1.0f;
@@ -441,7 +441,17 @@ public class RegisterActivity extends Activity implements SurfaceHolder.Callback
 				} else if(msg.arg1 == MSG_EVENT_NO_FEATURE ){
 					Toast.makeText(RegisterActivity.this, "人脸特征无法检测，请换一张图片", Toast.LENGTH_SHORT).show();
 				} else if(msg.arg1 == MSG_EVENT_NO_FACE ){
-					Toast.makeText(RegisterActivity.this, "没有检测到人脸，请换一张图片", Toast.LENGTH_SHORT).show();
+					new SweetAlertDialog(RegisterActivity.this, SweetAlertDialog.ERROR_TYPE)
+							.setTitleText("错误")
+							.setContentText("未检测到人脸，请重试")
+							.setCancelText("返回")
+							.setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+								@Override
+								public void onClick(SweetAlertDialog sweetAlertDialog) {
+									finish();
+								}
+							})
+							.show();
 				} else if(msg.arg1 == MSG_EVENT_FD_ERROR ){
 					Toast.makeText(RegisterActivity.this, "FD初始化失败，错误码：" + msg.arg2, Toast.LENGTH_SHORT).show();
 				} else if(msg.arg1 == MSG_EVENT_FR_ERROR){
